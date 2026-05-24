@@ -11,7 +11,6 @@ import org.springframework.beans.factory.annotation.Value;
 @Configuration
 public class OpenFgaConfig {
 
-    // These values should be placed in your application.properties file
     @Value("${fga.api-url}")
     private String apiUrl;
 
