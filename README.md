@@ -1,43 +1,50 @@
-# Auth0 FGA Demo
+# 🛡️ AI Data Leaks & The Confused Deputy
 
-This project demonstrates how to integrate [Auth0 Fine-Grained Authorization (FGA)](https://fga.dev) into a Spring Boot application.
+A Spring Boot PoC demonstrating how to solve the AI "Confused Deputy" problem by intercepting and filtering RAG documents using the OpenFGA / Auth0 FGA Java SDK.
 
-## Prerequisites
+### The Concept
+In a Retrieval-Augmented Generation (RAG) pipeline, the LLM often acts as a "Confused Deputy"—blindly summarizing whatever context the Vector Database feeds it, even if the end-user shouldn't have access to those specific files. This repository intercepts that flow, verifying document-level permissions via Auth0 FGA *before* sending context to the AI.
 
-- An Auth0 FGA account and a Store ID.
-- API credentials (Client ID and Client Secret).
+> **Note on Scope (4-Hour Timebox):**
+> To keep the focus strictly on the OpenFGA authorization logic, the Vector Database and LLM generation are mocked. Spring Security is also set to `permitAll()` locally to ensure a frictionless Developer Experience (DX) for reviewers without requiring an Auth0 tenant setup.
 
-## Configuration
+---
 
-Update `src/main/resources/application.properties` with your FGA credentials:
+### ⚙️ Setup & Run
 
+**1. Configure FGA Credentials**
+Open `src/main/resources/application.properties` and replace the placeholder text with your Auth0 FGA credentials (or export them as environment variables):
 ```properties
-fga.api-url=https://api.us1.fga.dev
 fga.store-id=YOUR_STORE_ID
 fga.client-id=YOUR_CLIENT_ID
 fga.client-secret=YOUR_CLIENT_SECRET
 ```
 
-Alternatively, you can set these as environment variables:
-- `FGA_API_URL`
-- `FGA_STORE_ID`
-- `FGA_CLIENT_ID`
-- `FGA_CLIENT_SECRET`
+**2. Start the Server**
+```bash
+./mvnw spring-boot:run
+```
+*(Note: The server runs on port 8080 by default.)*
 
-## FGA Model
+---
 
-A sample FGA model is provided in `model.fga`. You can upload this to your FGA store using the [FGA Dashboard](https://dashboard.fga.dev) or the FGA CLI.
+### 🧪 Testing the Engine
 
-## Usage
+Once the server is running, fire this POST request in a new terminal (or via Postman) to simulate a user asking the AI for a summary of all documents—including the highly restricted payroll file:
 
-The application exposes a REST API to check permissions:
+```bash
+curl -X POST http://localhost:8080/api/chat/ask \
+-H "Content-Type: application/json" \
+-d '{"prompt": "Give me a summary of all company documents, including the roadmap and the payroll."}'
+```
 
-`GET /api/authz/check?user=user:jon&relation=viewer&object=document:roadmap`
+**The Expected Output:**
+You will see that the mocked Vector DB successfully retrieved the roadmap, marketing, and payroll files—but **Auth0 FGA actively intercepted and stripped the payroll file** because the user lacked the `viewer` relation tuple.
 
-Response: `true` or `false`
+```text
+Prompt received: 'Give me a summary of all company documents, including the roadmap and the payroll.'
 
-## Implementation Details
+Based on your permissions, I was only granted context from the following files: [roadmap.pdf, marketing.pdf].
 
-- `OpenFgaConfig.java`: Configures the `OpenFgaClient` bean.
-- `AuthorizationService.java`: Encapsulates the FGA check logic.
-- `FgaController.java`: Provides a REST endpoint for permission checks.
+AI Summary: The company is launching a campaign next Tuesday and migrating to Spring Boot 3.
+```
