@@ -26,20 +26,17 @@ public class RagChatController {
 
         // 1. Get the human user's identity
         // Note: Hardcoded for frictionless local testing in this PoC.
-        // In a production app, this would be extracted via @AuthenticationPrincipal Jwt jwt
+        // In a production app, this would be extracted via @AuthenticationPrincipal Jwt
         String userId = "auth0|123";
 
         // 2. The Blind Search
-        // The database blindly returns semantically relevant documents
+        // The database returns semantically relevant documents
         List<Document> relevantDocs = vectorDb.search(request.prompt());
         List<Document> authorizedDocs = new ArrayList<>();
 
-        /* * 3. The Interception & OpenFGA Filter
-         * Note: For this PoC, we are iterating synchronously.
-         * In a high-scale production environment, you would optimize this
-         * by either using OpenFGA's BatchCheck API, concurrent CompletableFutures,
-         * or the ListObjects API for pre-filtering.
-         */
+        // * 3. The Interception & OpenFGA Filter
+        //Note: For this PoC, we are purposely iterating synchronously for simplicity.
+
         for (Document doc : relevantDocs) {
 
             // Ask FGA: Does this specific user have permission to view this specific document?
